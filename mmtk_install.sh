@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Molecular Modeling Tool Kit installer
-# version 0.2.7
+# version 0.2.8
 
 
 # # # # # # # USER FAQ # # # # # # #
@@ -215,6 +215,8 @@ case "$Kernel" in
             # and you won't need another version, from brew for example
             INSTALL_PIP_FLAG=true
         fi
+        # lazy way to force the installer to use clang instead of an independent version of gcc installed in /usr/local/bin
+        export PATH="/usr/bin:$PATH"
         ;;
     FreeBSD)
         INSTALL_PIP_FLAG=true
