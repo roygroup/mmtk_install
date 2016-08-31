@@ -290,7 +290,7 @@ hyperlink_names=( Python Cython zlib HDF5 c_netCDF NumPy SciPy FFTW MMTK fortran
 # note we updated the Cython package from 0.20.1 to 0.23.1 becuase it is necessary to run Dmitri/Matt's MMTK version
 hyperlinks=(
                 https://www.python.org/ftp/python/2.7.11/Python-2.7.11.tgz
-                http://cython.org/release/Cython-0.23.4.tar.gz   # previous version (0.23.1)
+                https://github.com/cython/cython/archive/0.24.x.tar.gz # previous version 0.23.1
                 http://zlib.net/zlib-1.2.8.tar.gz
                 http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.16/src/hdf5-1.8.16.tar.gz
                 ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.3.3.1.tar.gz
