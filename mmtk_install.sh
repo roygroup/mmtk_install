@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Molecular Modeling Tool Kit installer
-# version 0.2.8
+# version 0.3.0
 
 
 # # # # # # # USER FAQ # # # # # # #
 # HELLO USER!
 # PLEASE CHOOSE A DIRECTORY WHERE MMTK WILL BE INSTALLED
-INSTALL_DIRECTORY=~/.testa
+INSTALL_DIRECTORY=~/.testtemp
 #
 # - The script first checks which OS and architechture it is running on and provides any relevant information about software that is necessary later in the install
 #
@@ -116,6 +116,16 @@ E_NOTROOT=87        # Non-root exit error
 E_DOWNLOAD=88       # Failed to download necessary files
 tar_error_string="Failed to untar: %s\nIs this hyperlink broken: %s\nIt is required that you can download all packages before the installer can run.\n"
 
+
+#HTTP status codes
+HTTP_NOT_FOUND=404
+HTTP_OK=200
+
+#FTP status codes
+FTP_NOT_FOUND=550
+FTP_OK=350
+
+
 # keep all download options contained
 function download() {
     # -s Silent or quiet mode. Don't show progress meter or error messages. Makes Curl mute.
@@ -123,7 +133,22 @@ function download() {
     # -S When used with -s it makes curl show an error message if it fails.
     # -L Handles redirection, makes curl redo the request on the new location
     # -O Write output to a local file named like the remote file we get.
-    curl -O -L -s -S "${1}"
+    # -I curl returns the servers HTTP headers, not the page data
+    #
+    # first we check the header to make sure the link is valid,
+    RESPONSE_CODE=$(curl -s -o /dev/null -IL -w "%{http_code}" "${1}")
+
+    if [[ RESPONSE_CODE -eq HTTP_OK ]] || [[ RESPONSE_CODE -eq FTP_OK ]]; then
+        # the link is valid and we proceed with the download
+        curl -s -SOL "${1}"
+    elif [[ RESPONSE_CODE -eq HTTP_NOT_FOUND ]] || [[ RESPONSE_CODE -eq FTP_NOT_FOUND ]]; then
+        # the link is invalid and we notify the user
+        printf "Header code was invalid, please manually check the following hyperlink.\n%s\nIt is possible that the version number is out of date.\n" "${1}" 
+        exit ${E_DOWNLOAD}
+    else
+        # undefined result, notify user
+        printf "Header code was ambigious, please check the validity of this url: \n%s\n" "${1}" 
+    fi
 }
 
 # let the user know if we failed to get to the correct directory, wrap cd in an "error checking function"
@@ -151,18 +176,20 @@ case "$Kernel" in
         Kernel="OSX $MAC_VERSION"
         export GCC=/usr/bin/clang
 
-        case "$MAC_VERSION" in
-            10.11*) # (OS X 10.10) and later (works well with El Capitan, OS X 10.11)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-5.2-Yosemite.dmg         ;; #/gfortran-5.2-Yosemite.dmg
+        case "$MAC_VERSION" in 
+            10.12*)
+                GFORTAN_LINK=http://coudert.name/software/gfortran-6.3-Sierra.dmg           ;;
+            10.11*)
+                GFORTAN_LINK=http://coudert.name/software/gfortran-6.1-ElCapitan.dmg        ;;
             10.10*) # (OS X 10.10)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-4.9.2-Yosemite.dmg       ;; #/gfortran-4.9.2-Yosemite.dmg
+                GFORTAN_LINK=http://coudert.name/software/gfortran-5.2-Yosemite.dmg         ;;
             10.9*)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-4.9.0-Mavericks.dmg      ;; #/gfortran-4.8.2-Mavericks.dmg
+                GFORTAN_LINK=http://coudert.name/software/gfortran-4.9.0-Mavericks.dmg      ;;
             10.8*)
                 GFORTAN_LINK=http://coudert.name/software/gfortran-4.8.2-MountainLion.dmg   ;;
             10.7*)
                 GFORTAN_LINK=http://coudert.name/software/gfortran-4.8.2-Lion.dmg           ;;
-            *)
+            *) 
                 printf "You need to find a source for gfortran to install on you iMac\n"
                 exit 0
                 ;;
@@ -266,6 +293,8 @@ if [[ "$(command -v gfortran)" ]]; then
 else
     printf "\nYou do not have gfortran! You will not be able to compile FFTW.\n"
     printf "Please download and install gfortran from this link:\n%s\nNote that this requires administrative privilages!\n" "$GFORTAN_LINK"
+    printf "If you have already installed an older version of gfortran please remove it with the following command:\n%s\n" \
+    "sudo rm -r /usr/local/gfortran /usr/local/bin/gfortran"
     HAS_GFORTRAN=false
 fi
 
@@ -287,16 +316,17 @@ declare -a foldernames      # the default names of the folders containing the un
 
 hyperlink_names=( Python Cython zlib HDF5 c_netCDF NumPy SciPy FFTW MMTK fortran_netCDF )
 
-# note we updated the Cython package from 0.20.1 to 0.23.1 becuase it is necessary to run Dmitri/Matt's MMTK version
+# note we updated the Cython package from 0.20.1 to 0.23.1 and beyond becuase it is necessary to run Dmitri/Matt's MMTK version
+
 hyperlinks=(
-                https://www.python.org/ftp/python/2.7.11/Python-2.7.11.tgz
-                https://github.com/cython/cython/archive/0.24.x.tar.gz # previous version 0.23.1
-                http://zlib.net/zlib-1.2.8.tar.gz
+                https://www.python.org/ftp/python/2.7.13/Python-2.7.13.tgz # cannot support higher than 2.7.X
+                https://github.com/cython/cython/archive/0.25.2.tar.gz
+                http://zlib.net/zlib-1.2.11.tar.gz
                 http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.16/src/hdf5-1.8.16.tar.gz
                 ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.3.3.1.tar.gz
                 http://sourceforge.net/projects/numpy/files/NumPy/1.8.2/numpy-1.8.2.tar.gz
-                https://sourcesup.renater.fr/frs/download.php/file/4425/ScientificPython-2.9.4.tar.gz  # previous version (2.9.3)
-                http://www.fftw.org/fftw-3.3.4.tar.gz
+                https://sourcesup.renater.fr/frs/download.php/file/4570/ScientificPython-2.9.4.tar.gz
+                ftp://ftp.fftw.org/pub/fftw/fftw-3.3.6-pl1.tar.gz
                 https://bitbucket.org/khinsen/mmtk/get/path_integrals.tar.gz
                 ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-fortran-4.4.2.tar.gz
             )
@@ -341,154 +371,92 @@ for (( i=0; i<${arraylength}; i++ )); do
         printf "Filename   %s\nFoldername %s\n" "${filenames[$i]}" "${foldernames[$i]}"
     fi
 done
-
 printf "Finished downloading all required packages\n"
 
-# start installing stuff
-if [[ "$1" -le 0 ]]; then
-    change_dir "${foldernames[0]}"
-    printf "Attempting to build and install %s\n" "${hyperlink_names[0]}"
-    {
-    # only try to install pip if we have openssl
-    if $INSTALL_PIP_FLAG; then echo "Pip will be installed"; PIP_OPTION=yes; else echo "No pip installed"; PIP_OPTION=no; fi
-    ./configure --prefix="$INSTALL_DIRECTORY" --enable-unicode=ucs4  --with-ensurepip=${PIP_OPTION}
-    make
-    make install
-    } >> "$LOG_DIRECTORY/${hyperlink_names[0]}log" 2>&1
-    change_dir ..
-    printf "%s successfully installed\n" "${hyperlink_names[0]}"
-else
-    printf "Assuming %s is already installed\n" "${hyperlink_names[0]}"
-fi
 
-if [[ "$1" -le 1 ]]; then
-    change_dir "${foldernames[1]}"
-    printf "Attempting to build and install %s\n" "${hyperlink_names[1]}"
-    {
-        "$INSTALL_DIRECTORY"/bin/python setup.py install
-    } > "$LOG_DIRECTORY/${hyperlink_names[1]}log" 2>&1
-    change_dir ..
-    printf "%s successfully installed\n" "${hyperlink_names[1]}"
-else
-    printf "Assuming %s is already installed\n" "${hyperlink_names[1]}"
-fi
 
-if [[ "$1" -le 2 ]]; then
-    change_dir "${foldernames[2]}"
-    printf "Attempting to build and install %s\n" "${hyperlink_names[2]}"
-    {
-        ./configure --prefix="$INSTALL_DIRECTORY"
-        make
-        make check install
-    } > "$LOG_DIRECTORY/${hyperlink_names[2]}log" 2>&1
-    change_dir ..
-    printf "%s successfully installed\n" "${hyperlink_names[2]}"
-else
-    printf "Assuming %s is already installed\n" "${hyperlink_names[2]}"
-fi
+# the specific installation options
+function install_function() {
+    case "$1" in
+        0) # python
+            # only try to install pip if we have openssl
+            if $INSTALL_PIP_FLAG; then echo "Pip will be installed"; PIP_OPTION=yes; else echo "No pip installed"; PIP_OPTION=no; fi
+            ./configure --prefix="$INSTALL_DIRECTORY" --enable-unicode=ucs4  --with-ensurepip=${PIP_OPTION}
+            make
+            make install
+            ;;   
 
-if [[ "$1" -le 3 ]]; then
-    change_dir "${foldernames[3]}"
-    printf "Attempting to build and install %s\n" "${hyperlink_names[3]}"
-    {
-        ./configure --with-zlib="$INSTALL_DIRECTORY" --prefix="$INSTALL_DIRECTORY"
-        make
-        make check install
-    } > "$LOG_DIRECTORY/${hyperlink_names[3]}log" 2>&1
-    change_dir ..
-    printf "%s successfully installed\n" "${hyperlink_names[3]}"
-else
-    printf "Assuming %s is already installed\n" "${hyperlink_names[3]}"
-fi
-
-if [[ "$1" -le 4 ]]; then
-    change_dir "${foldernames[4]}"
-    printf "Attempting to build and install %s\n" "${hyperlink_names[4]}"
-    {
-        CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
+        1) # cython
+            "$INSTALL_DIRECTORY"/bin/python setup.py install
+            ;;  
+        2) # zlib
             ./configure --prefix="$INSTALL_DIRECTORY"
-        make check install
-    } > "$LOG_DIRECTORY/${hyperlink_names[4]}log" 2>&1
-    change_dir ..
-    printf "%s successfully installed\n" "${hyperlink_names[4]}"
-else
-    printf "Assuming %s is already installed\n" "${hyperlink_names[4]}"
-fi
-
-if [[ "$1" -le 5 ]]; then
-    change_dir "${foldernames[5]}"
-    printf "Attempting to build and install %s\n" "${hyperlink_names[5]}"
-    {
-        "$INSTALL_DIRECTORY"/bin/python setup.py install
-    } > "$LOG_DIRECTORY/${hyperlink_names[5]}log" 2>&1
-    change_dir ..
-    printf "%s successfully installed\n" "${hyperlink_names[5]}"
-else
-    printf "Assuming %s is already installed\n" "${hyperlink_names[5]}"
-fi
-
-if [[ "$1" -le 6 ]]; then
-    change_dir "${foldernames[6]}"
-    printf "Attempting to build and install %s\n" "${hyperlink_names[6]}"
-    {
-        export NETCDF_PREFIX="$INSTALL_DIRECTORY"
-        "$INSTALL_DIRECTORY"/bin/python setup.py install
-    } > "$LOG_DIRECTORY/${hyperlink_names[6]}log" 2>&1
-    change_dir ..
-    printf "%s successfully installed\n" "${hyperlink_names[6]}"
-else
-    printf "Assuming %s is already installed\n" "${hyperlink_names[6]}"
-fi
-
-if [[ "$1" -le 7 ]]; then
-    change_dir "${foldernames[7]}"
-    printf "Attempting to build and install %s\n" "${hyperlink_names[7]}"
-    {
-        ./configure --prefix="$INSTALL_DIRECTORY" --enable-shared
-        make check install
-    } > "$LOG_DIRECTORY/${hyperlink_names[7]}log" 2>&1
-    change_dir ..
-    printf "%s successfully installed\n" "${hyperlink_names[7]}"
-else
-    printf "Assuming %s is already installed\n" "${hyperlink_names[7]}"
-fi
-
-if [[ "$1" -le 8 ]]; then
-    change_dir "${foldernames[8]}"
-    printf "Attempting to build and install %s\n" "${hyperlink_names[8]}"
-    {
-        "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_action.pyx
-        "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_generator.pyx
-        export MMTK_USE_CYTHON=1
-        "$INSTALL_DIRECTORY"/bin/python setup.py build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib
-        "$INSTALL_DIRECTORY"/bin/python setup.py install
-    } > "$LOG_DIRECTORY/${hyperlink_names[8]}log" 2>&1
-    change_dir ..
-    printf "%s successfully installed\n" "${hyperlink_names[8]}"
-else
-    printf "Assuming %s is already installed\n" "${hyperlink_names[8]}"
-fi
-printf "Everything is done and MMTK should work now!\n"
-
-
-
-#this is only if you need fortran binaries for netCDF
-if $NETCDF_FORTRAN; then
-    if [[ "$1" -le 9 ]]; then
-        change_dir "${foldernames[9]}"
-        {
+            make
+            make check install
+            ;;
+        3) # HDF5
+            ./configure --with-zlib="$INSTALL_DIRECTORY" --prefix="$INSTALL_DIRECTORY"
+            make
+            make check install
+            ;;
+        4) # netCDF
+            CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
+                ./configure --prefix="$INSTALL_DIRECTORY"
+            make check install
+            ;;
+        5) # Numpy
+            "$INSTALL_DIRECTORY"/bin/python setup.py install
+            ;;
+        6) # Scipy
+            export NETCDF_PREFIX="$INSTALL_DIRECTORY"
+            "$INSTALL_DIRECTORY"/bin/python setup.py install
+            ;;
+        7) # FFTW
+            ./configure --prefix="$INSTALL_DIRECTORY" --enable-shared
+            make check install
+            ;;
+        8) # MMTK
+            "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_action.pyx
+            "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_generator.pyx
+            export MMTK_USE_CYTHON=1
+            "$INSTALL_DIRECTORY"/bin/python setup.py build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib
+            "$INSTALL_DIRECTORY"/bin/python setup.py install
+            ;;
+        9)  #this is only if you need fortran binaries for netCDF
             export LD_LIBRARY_PATH="$INSTALL_DIRECTORY"/lib:"${LD_LIBRARY_PATH}"
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
                 ./configure  --disable-fortran-type-check --prefix="$INSTALL_DIRECTORY"
             make check
             make install
-        } > "$LOG_DIRECTORY/${hyperlink_names[9]}log" 2>&1
-        printf "%s successfully installed fortran version of\n" "${hyperlink_names[9]}"
-            printf "%s successfully installed\n" "${hyperlink_names[9]}"
-    else
-        printf "Assuming %s is already installed\n" "${hyperlink_names[9]}"
-    fi
-    printf "Now Exiting the scipt\n"
+            ;;
+        *) 
+            printf "Install loop did something weird, why is the counter ${1} greater than 9?\n"   
+            exit 0 
+            ;; 
+    esac
+}
+
+# if we don't need to install fortran for netCDF then change arraylength
+if [[ $NETCDF_FORTRAN = false ]]; then
+    let "arraylength -= 1"
 fi
 
+
+# where we install the programs
+for (( i=0; i<${arraylength}; i++ )); do
+    if [[ "$1" -le "$i" ]]; then
+        change_dir "${foldernames[$i]}"
+        printf "Attempting to build and install %s\n" "${hyperlink_names[$i]}"
+        { 
+            install_function "$i"
+        } > "$LOG_DIRECTORY/${hyperlink_names[$i]}log" 2>&1
+        change_dir ..
+        printf "%s successfully installed\n" "${hyperlink_names[$i]}"
+    else
+        printf "Assuming %s is already installed\n" "${hyperlink_names[$i]}"
+    fi
+done
+
+printf "Everything is done and MMTK should work now!\n"
+printf "Now Exiting the scipt\n"
 exit 0
