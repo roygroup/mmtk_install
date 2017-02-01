@@ -93,7 +93,7 @@ export LC_ALL=C
 set -e
 
 # the directories we will be installing to
-DOWNLOAD_DIRECTORY="$INSTALL_DIRECTORY"/downloads
+DOWNLOAD_DIRECTORY="$INSTALL_DIRECTORY"/src
 LOG_DIRECTORY="$INSTALL_DIRECTORY"/logs
 
 # where the script is located
@@ -205,6 +205,7 @@ case "$Kernel" in
         done
 
         # make sure you have openssl installed for pip
+        set +e
         if [[ $MAC_VERSION == 10.1* ]]; then
             which -s brew
             if [[ $? != 0 ]] ; then # then brew doesn't exist
@@ -242,6 +243,7 @@ case "$Kernel" in
             # and you won't need another version, from brew for example
             INSTALL_PIP_FLAG=true
         fi
+        set -e
         # lazy way to force the installer to use clang instead of an independent version of gcc installed in /usr/local/bin
         export PATH="/usr/bin:$PATH"
         ;;
