@@ -321,16 +321,17 @@ hyperlink_names=( Python Cython zlib HDF5 c_netCDF NumPy SciPy FFTW MMTK fortran
 # note we updated the Cython package from 0.20.1 to 0.23.1 and beyond becuase it is necessary to run Dmitri/Matt's MMTK version
 
 hyperlinks=(
-                https://www.python.org/ftp/python/2.7.13/Python-2.7.13.tgz # cannot support higher than 2.7.X
+                https://www.python.org/ftp/python/2.7.15/Python-2.7.15.tgz # cannot support higher than 2.7.X
                 https://github.com/cython/cython/archive/0.25.2.tar.gz
                 http://zlib.net/zlib-1.2.11.tar.gz
                 http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.16/src/hdf5-1.8.16.tar.gz
-                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.3.3.1.tar.gz
-                http://sourceforge.net/projects/numpy/files/NumPy/1.8.2/numpy-1.8.2.tar.gz
+#                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.3.3.1.tar.gz
+                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.6.1.tar.gz
+                http://sourceforge.net/projects/numpy/files/NumPy/1.8.2/numpy-1.8.2.tar.gz # cannot support higher than 1.8.x
                 https://sourcesup.renater.fr/frs/download.php/file/4570/ScientificPython-2.9.4.tar.gz
                 ftp://ftp.fftw.org/pub/fftw/fftw-3.3.6-pl1.tar.gz
-                https://bitbucket.org/khinsen/mmtk/get/path_integrals.tar.gz
-                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-fortran-4.4.2.tar.gz
+                https://bitbucket.org/khinsen/mmtk/downloads/MMTK-2.7.11.tar.gz # if that link doesn't work, plz download this manully, then rerun .sh
+                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-fortran-4.4.4.tar.gz
             )
 
 
