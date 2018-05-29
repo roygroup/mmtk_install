@@ -326,7 +326,7 @@ hyperlinks=(
                 https://www.python.org/ftp/python/2.7.15/Python-2.7.15.tgz # cannot support higher than 2.7.X
                 https://github.com/cython/cython/archive/0.25.2.tar.gz
                 http://zlib.net/zlib-1.2.11.tar.gz
-                http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.16/src/hdf5-1.8.16.tar.gz
+                https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/hdf5-1.10.2.tar.gz
                 ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.6.1.tar.gz
                 http://sourceforge.net/projects/numpy/files/NumPy/1.8.2/numpy-1.8.2.tar.gz # cannot support higher than 1.8.x
                 https://sourcesup.renater.fr/frs/download.php/file/4570/ScientificPython-2.9.4.tar.gz
