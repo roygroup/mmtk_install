@@ -7,7 +7,7 @@
 # # # # # # # USER FAQ # # # # # # #
 # HELLO USER!
 # PLEASE CHOOSE A DIRECTORY WHERE MMTK WILL BE INSTALLED
-INSTALL_DIRECTORY=~/.testtemp
+INSTALL_DIRECTORY=~/.mmtk
 #
 # - The script first checks which OS and architechture it is running on and provides any relevant information about software that is necessary later in the install
 #
@@ -177,6 +177,8 @@ case "$Kernel" in
         export GCC=/usr/bin/clang
 
         case "$MAC_VERSION" in 
+            10.13*)
+                GFORTAN_LINK=http://coudert.name/software/gfortran-6.3-Sierra.dmg           ;;
             10.12*)
                 GFORTAN_LINK=http://coudert.name/software/gfortran-6.3-Sierra.dmg           ;;
             10.11*)
@@ -316,7 +318,7 @@ declare -a filenames        # the name of the tar downloaded from the hyperlink
 declare -a foldernames      # the default names of the folders containing the un-tar'ed files
 
 
-hyperlink_names=( Python Cython zlib HDF5 c_netCDF NumPy SciPy FFTW MMTK fortran_netCDF )
+hyperlink_names=( Python Cython zlib HDF5 c_netCDF NumPy SciPy FFTW fortran_netCDF )
 
 # note we updated the Cython package from 0.20.1 to 0.23.1 and beyond becuase it is necessary to run Dmitri/Matt's MMTK version
 
@@ -325,12 +327,11 @@ hyperlinks=(
                 https://github.com/cython/cython/archive/0.25.2.tar.gz
                 http://zlib.net/zlib-1.2.11.tar.gz
                 http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.16/src/hdf5-1.8.16.tar.gz
-#                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.3.3.1.tar.gz
                 ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.6.1.tar.gz
                 http://sourceforge.net/projects/numpy/files/NumPy/1.8.2/numpy-1.8.2.tar.gz # cannot support higher than 1.8.x
                 https://sourcesup.renater.fr/frs/download.php/file/4570/ScientificPython-2.9.4.tar.gz
                 ftp://ftp.fftw.org/pub/fftw/fftw-3.3.6-pl1.tar.gz
-                https://bitbucket.org/khinsen/mmtk/downloads/MMTK-2.7.11.tar.gz # if that link doesn't work, plz download this manully, then rerun .sh
+                https://bitbucket.org/khinsen/mmtk/get/path_integrals.tar.gz
                 ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-fortran-4.4.4.tar.gz
             )
 
@@ -425,7 +426,7 @@ function install_function() {
             "$INSTALL_DIRECTORY"/bin/python setup.py build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib
             "$INSTALL_DIRECTORY"/bin/python setup.py install
             ;;
-        9)  #this is only if you need fortran binaries for netCDF
+        8)  #this is only if you need fortran binaries for netCDF
             export LD_LIBRARY_PATH="$INSTALL_DIRECTORY"/lib:"${LD_LIBRARY_PATH}"
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
                 ./configure  --disable-fortran-type-check --prefix="$INSTALL_DIRECTORY"
