@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Molecular Modeling Tool Kit installer
-# version 0.3.0
+# version 0.4.0
 
 
 # # # # # # # USER FAQ # # # # # # #
@@ -107,7 +107,7 @@ LOG_FILE="$SCRIPT_DIR"/logfile      # for now the current directory
 touch "$LOG_FILE"
 exec > >(tee "$LOG_FILE") 2>&1
 
-# error codes 
+# error codes
 E_WRONGKERNEL=83    # wrong kernel
 E_WRONGARCH=84      # wrong architecture
 E_WRONGARS=85       # Arguments wrong error
@@ -143,11 +143,11 @@ function download() {
         curl -s -SOL "${1}"
     elif [[ RESPONSE_CODE -eq HTTP_NOT_FOUND ]] || [[ RESPONSE_CODE -eq FTP_NOT_FOUND ]]; then
         # the link is invalid and we notify the user
-        printf "Header code was invalid, please manually check the following hyperlink.\n%s\nIt is possible that the version number is out of date.\n" "${1}" 
+        printf "Header code was invalid, please manually check the following hyperlink.\n%s\nIt is possible that the version number is out of date.\n" "${1}"
         exit ${E_DOWNLOAD}
     else
         # undefined result, notify user
-        printf "Header code was ambigious, please check the validity of this url: \n%s\n" "${1}" 
+        printf "Header code was ambigious, please check the validity of this url: \n%s\n" "${1}"
     fi
 }
 
@@ -176,7 +176,7 @@ case "$Kernel" in
         Kernel="OSX $MAC_VERSION"
         export GCC=/usr/bin/clang
 
-        case "$MAC_VERSION" in 
+        case "$MAC_VERSION" in
             10.13*)
                 GFORTAN_LINK=http://coudert.name/software/gfortran-6.3-Sierra.dmg           ;;
             10.12*)
@@ -191,7 +191,7 @@ case "$Kernel" in
                 GFORTAN_LINK=http://coudert.name/software/gfortran-4.8.2-MountainLion.dmg   ;;
             10.7*)
                 GFORTAN_LINK=http://coudert.name/software/gfortran-4.8.2-Lion.dmg           ;;
-            *) 
+            *)
                 printf "You need to find a source for gfortran to install on you iMac\n"
                 exit 0
                 ;;
@@ -318,7 +318,7 @@ declare -a filenames        # the name of the tar downloaded from the hyperlink
 declare -a foldernames      # the default names of the folders containing the un-tar'ed files
 
 
-hyperlink_names=( Python Cython zlib HDF5 c_netCDF NumPy SciPy FFTW fortran_netCDF )
+hyperlink_names=( Python Cython zlib HDF5 c_netCDF NumPy SciPy FFTW MMTK fortran_netCDF )
 
 # note we updated the Cython package from 0.20.1 to 0.23.1 and beyond becuase it is necessary to run Dmitri/Matt's MMTK version
 
@@ -388,11 +388,11 @@ function install_function() {
             ./configure --prefix="$INSTALL_DIRECTORY" --enable-unicode=ucs4  --with-ensurepip=${PIP_OPTION}
             make
             make install
-            ;;   
+            ;;
 
         1) # cython
             "$INSTALL_DIRECTORY"/bin/python setup.py install
-            ;;  
+            ;;
         2) # zlib
             ./configure --prefix="$INSTALL_DIRECTORY"
             make
@@ -426,17 +426,17 @@ function install_function() {
             "$INSTALL_DIRECTORY"/bin/python setup.py build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib
             "$INSTALL_DIRECTORY"/bin/python setup.py install
             ;;
-        8)  #this is only if you need fortran binaries for netCDF
+        9)  #this is only if you need fortran binaries for netCDF
             export LD_LIBRARY_PATH="$INSTALL_DIRECTORY"/lib:"${LD_LIBRARY_PATH}"
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
                 ./configure  --disable-fortran-type-check --prefix="$INSTALL_DIRECTORY"
             make check
             make install
             ;;
-        *) 
-            printf "Install loop did something weird, why is the counter ${1} greater than 9?\n"   
-            exit 0 
-            ;; 
+        *)
+            printf "Install loop did something weird, why is the counter ${1} greater than 9?\n"
+            exit 0
+            ;;
     esac
 }
 
@@ -451,7 +451,7 @@ for (( i=0; i<${arraylength}; i++ )); do
     if [[ "$1" -le "$i" ]]; then
         change_dir "${foldernames[$i]}"
         printf "Attempting to build and install %s\n" "${hyperlink_names[$i]}"
-        { 
+        {
             install_function "$i"
         } > "$LOG_DIRECTORY/${hyperlink_names[$i]}log" 2>&1
         change_dir ..
