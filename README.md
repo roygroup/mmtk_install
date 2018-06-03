@@ -1,32 +1,75 @@
-# mmtk_install
-Install script for MMTK
+# Molecular Modelling Tool Kit (MMTK) install script
+This is a self contained bash script that attempts to automate the process of installing the MMTK python package and all the required dependencies. The script *should* run on all linux and OSX systems. It is not designed to be used on Windows. Minimal error and dependency checking is provided, if any issues occur during installation users should read the FAQ and then check the logs. Following that users should ask for help from someone in the group.
 
-================INSTALLATION================
-For install the mmtk and the python developer packages, the only thing you have to do is:
+To install
+----------
+```
+./mmtk_install.sh
+```
 
-        ./mmtk_install.sh
+By default mmtk and its related dependencies will be installed to the local directory `$HOME/.mmtk`.
+If you wish to change the installation directory you can modify the variable `INSTALL_DIRECTORY` on line 10 of the `mmtk_install.sh` script.
 
-All the things now is installed in your home directory ~/.mmtk
 
-=============MODIFY BASH PROFILE=============
-As the mmtk uses the developer version of python, not the python installed in your server or PC.
-You have to modify the SHELL profile to make an alias to indicate the version you want to use.
-As we always leave the original version of python with the command "python", we chose the "pydev"
-for developer version of python.
+Aliasing or modifying the PATH
+------------------------------
+MMTK requires a specific verison of python which is located at `INSTALL_DIRECTORY/bin`.
+You may wish to create an alias for this version of python, or change your PATH.
 
-If you are using the bash SHELL, you can add alias in .bash_profile in your home directory. If you are
-using other SHELL, like zsh, you can modify the specific profile like .zshrc:
+Some examples are provided below
 
-        cd #change directory to your home directory
-        vi .bash_profile #open the bash profile
+* **macOS + bash**
+```
+cat 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.bash_profile
+```
+* **linux + bash**
+```
+cat 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.bashrc
+```
+* **zsh**
+```
+cat 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.zshrc
+```
 
-Then you can add following lines in your .bash_profile:
+Obviously if you change the `INSTALL_DIRECTORY` you will need to change the aliases.
+You may also use a different alias then pydev.
 
-        alias '"$HOME/.mmtk/bin/python" $*'
-        export LD_LIBRARY_PATH=$HOME/.mmtk/lib
 
-If you change the directory of the mmtk, please modify the above paths by your own.
+Changing the source files (url's)
+--------------------------------------
+On line 100 of `./mmtk_install.sh` there is an array `hyperlinks` of the source url's for each piece of software used in the installation of MMTK. You may modify these links if you wish to use more recent versions of the software, like a newer version of [fftw](http://www.fftw.org/). Unfortunately Python is locked to version 2.7.X and Numpy is locked to version 1.8.x due to dependencies in MMTK. You can [read more about that here](https://bitbucket.org/khinsen/mmtk). The hyperlink_names array just stores strings which are printed to the user in error messages.
+The code assumes that the two arrays are the same length and are in the same order. Do not **remove** any of the url's or names, **only** replace the url's with newer versions if you have confirmed that MMTK will install successfully.
 
-Now, you can use "pydev" to run your simulation with MMTK
+What the script does
+--------------------
+1. Check which OS and architechture it is running on and provides any relevant information about software that is necessary later in the install. The script will exit at this point if necessary software is not present on the local machine. This may require the user to install certain software on their own.
 
-=====================END=======================
+2. Create the following directories
+    * `INSTALL_DIRECTORY`
+    * `INSTALL_DIRECTORY/src`
+    * `INSTALL_DIRECTORY/logs`
+
+3. Begin downloading the necessary source files to the src directory. When re-running the script it preforms a basic check which *should* detect any source files which were previously downloaded. It will print relevant error messages.
+
+4. After confirming that all necessary source files are present the installation will begin. If the script exits before printing the string `Everything is done and MMTK should work now!` this indicates that there was an issue with the installation. First check the log file in the current directory which is named `logfile`. This should indicate which step in the installation failed. Then you can check the relevant log file in the `./INSTALL_DIRECTORY/logs` directory to see the **exact** error message.
+
+    Software is installed in the following order
+
+    * **0** - Python
+    * **1** - Cython
+    * **2** - zlib
+    * **3** - HDF5
+    * **4** - netCDF (no support for fortran)
+    * **5** - NumPy
+    * **6** - SciPy
+    * **7** - FFTW
+    * **8** - MMTK
+    * **9** - fortran binaries for netCDF
+
+    You can rerun the script where you left off by providing a NUMBER argument (shown above) to the script like so: `./mmtk_install.sh 2`, where 0 starts the installation from scratch. The script will continue with the installation ASSUMING that every package before this point SUCCESSFULLY installed, **there is no error checking!**
+
+5. Finally the last package 9 (fortran_netCDF) is not necessary to run MMTK. Therefore the default setting is to not install it. It is necessary if you want to write fortran code that can read and write \*.nc files. To install the fortran binaries for netCDF change the variable `NETCDF_FORTRAN` on line 37 to true. If you need the fortran binaries for netCDF you *might* need to add the following line to your `.bash_profile` or `.bashrc`
+```
+export LD_LIBRARY_PATH=$HOME/.mmtk/lib:$LD_LIBRARY_PATH
+```
+

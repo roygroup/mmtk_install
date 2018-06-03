@@ -7,16 +7,16 @@
 # # # # # # # USER FAQ # # # # # # #
 # HELLO USER!
 # PLEASE CHOOSE A DIRECTORY WHERE MMTK WILL BE INSTALLED
-INSTALL_DIRECTORY=~/.mmtk
+INSTALL_DIRECTORY=$HOME/.mmtk
 #
 # - The script first checks which OS and architechture it is running on and provides any relevant information about software that is necessary later in the install
 #
 # - The script will create the following directories
 # ./INSTALL_DIRECTORY
-#   ./INSTALL_DIRECTORY/downloads
+#   ./INSTALL_DIRECTORY/src
 #   ./INSTALL_DIRECTORY/logs
 #
-# - It will begin downloading the necessary source files to the downloads directory
+# - It will begin downloading the necessary source files to the src directory
 # If you re run the script it SHOULD detect any source files it has previously downloaded. It will print relevant error messages.
 # If you want to install with different version of the respective pacakges you just need to change the links in the hyperlinks array. The hyperlink_names array is just for printing purposes.
 #
@@ -85,6 +85,41 @@ NETCDF_FORTRAN=false
 #
 # #
 
+
+# the four arrays are ordered respectively
+declare -a hyperlink_names  # the generic names of the packages we require
+declare -a hyperlinks       # hyperlinks to the SPECIFIC version of that package we wish to download
+declare -a filenames        # the name of the tar downloaded from the hyperlink
+declare -a foldernames      # the default names of the folders containing the un-tar'ed files
+
+
+hyperlink_names=( Python Cython zlib HDF5 c_netCDF NumPy SciPy FFTW MMTK fortran_netCDF )
+
+# note we updated the Cython package from 0.20.1 to 0.23.1 and beyond becuase it is necessary to run Dmitri/Matt's MMTK version
+
+hyperlinks=(
+                https://www.python.org/ftp/python/2.7.15/Python-2.7.15.tgz # cannot support higher than 2.7.X
+                https://github.com/cython/cython/archive/0.25.2.tar.gz
+                http://zlib.net/zlib-1.2.11.tar.gz
+                https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/hdf5-1.10.2.tar.gz
+                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.6.1.tar.gz
+                http://sourceforge.net/projects/numpy/files/NumPy/1.8.2/numpy-1.8.2.tar.gz # cannot support higher than 1.8.x
+                https://sourcesup.renater.fr/frs/download.php/file/4570/ScientificPython-2.9.4.tar.gz
+                ftp://ftp.fftw.org/pub/fftw/fftw-3.3.6-pl1.tar.gz
+                https://bitbucket.org/khinsen/mmtk/get/path_integrals.tar.gz
+                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-fortran-4.4.4.tar.gz
+            )
+
+
+arraylength=${#hyperlinks[@]} # the number of packages to download
+
+
+# list of sharcnet / computecanada clusters
+cluster_hostnames=(
+                    "orc-login" # orca
+                    "gra-login"
+                    "cedar"
+                   )
 
 
 #lang specific details
@@ -290,7 +325,7 @@ esac
 printf "Operating System Architecture: %s\n" "${Architecture}"
 
 
-# lets check if you have gfortran
+# check if you have gfortran
 if [[ "$(command -v gfortran)" ]]; then
     printf "\nIt seems that you have gfortran, however, if the installer fails while trying to install FFTW it is most likely a gfortran issue\n\n"
     HAS_GFORTRAN=true
@@ -302,6 +337,11 @@ else
     HAS_GFORTRAN=false
 fi
 
+
+# check if you are running on computecanada or sharcnet cluster
+# if so we need to print out a message to the user and maybe automate some of the work for them
+# - TODO -
+
 # create the directories that we will be working in
 mkdir -p ${INSTALL_DIRECTORY}
 mkdir -p ${DOWNLOAD_DIRECTORY}
@@ -310,33 +350,6 @@ printf "Succesfully made directories: \n%s\n%s\n%s\n\n" "${INSTALL_DIRECTORY}" "
 
 # move to the download directory to start downloading
 change_dir "${DOWNLOAD_DIRECTORY}"
-
-# the four arrays are ordered respectively
-declare -a hyperlink_names  # the generic names of the packages we require
-declare -a hyperlinks       # hyperlinks to the SPECIFIC version of that package we wish to download
-declare -a filenames        # the name of the tar downloaded from the hyperlink
-declare -a foldernames      # the default names of the folders containing the un-tar'ed files
-
-
-hyperlink_names=( Python Cython zlib HDF5 c_netCDF NumPy SciPy FFTW MMTK fortran_netCDF )
-
-# note we updated the Cython package from 0.20.1 to 0.23.1 and beyond becuase it is necessary to run Dmitri/Matt's MMTK version
-
-hyperlinks=(
-                https://www.python.org/ftp/python/2.7.15/Python-2.7.15.tgz # cannot support higher than 2.7.X
-                https://github.com/cython/cython/archive/0.25.2.tar.gz
-                http://zlib.net/zlib-1.2.11.tar.gz
-                https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/hdf5-1.10.2.tar.gz
-                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.6.1.tar.gz
-                http://sourceforge.net/projects/numpy/files/NumPy/1.8.2/numpy-1.8.2.tar.gz # cannot support higher than 1.8.x
-                https://sourcesup.renater.fr/frs/download.php/file/4570/ScientificPython-2.9.4.tar.gz
-                ftp://ftp.fftw.org/pub/fftw/fftw-3.3.6-pl1.tar.gz
-                https://bitbucket.org/khinsen/mmtk/get/path_integrals.tar.gz
-                ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-fortran-4.4.4.tar.gz
-            )
-
-
-arraylength=${#hyperlinks[@]} # the number of packages to download
 
 # download loop
 for (( i=0; i<${arraylength}; i++ )); do
