@@ -126,13 +126,17 @@ cluster_hostnames=(
 # if so we need to print out a message to the user
 hostname=$(hostname)
 
+# set flag to true if on 
+DOWNLOAD_ONLY=false
+
 for str in ${cluster_hostnames[@]}; do
     if [[ ${hostname} =~ ${str} ]]; then
         echo "It appears that you are running the install script on a login node of a SHARCNET or compute canada cluster.
-        Please note that to install on these clusters is a two step process.
-        First you need to run the script on the head node until the downloads are finished, then exit the script with Ctrl+D.
-        Next you should execute the script in an interactive session, or as a job with sbatch.
-        Do you understand?"
+Please note that to install on these clusters is a two step process.
+First you need to run the script on the head node until the downloads are finished, then exit the script with Ctrl+D.
+Next you should execute the script in an interactive session, or as a job with sbatch.
+Do you understand?"
+        DOWNLOAD_ONLY=true
         select yn in "Yes" "No"; do
             case $yn in
                 Yes ) break;;
@@ -410,6 +414,13 @@ done
 printf "Finished downloading all required packages\n"
 
 
+# if we don't need to install fortran for netCDF then change arraylength
+if [[ $DOWNLOAD_ONLY = true ]]; then
+    printf "It appears we are on a head node, execution will stop here, you must run the script in an interactive session or submit the job to the queue using sbatch/qsub.\n"
+    exit
+fi
+
+
 # see the following stackoverflow post for the choice of -j9
 # https://stackoverflow.com/questions/17743547/how-to-speed-up-compilation-time-in-linux/17749621#17749621
 
@@ -417,7 +428,7 @@ printf "Finished downloading all required packages\n"
 # the specific installation options
 function install_function() {
     case "$1" in
-        0) # python
+        0) # python -- should consider adding the --enable-optimizations command to speed up python?
             # only try to install pip if we have openssl
             if $INSTALL_PIP_FLAG; then echo "Pip will be installed"; PIP_OPTION=yes; else echo "No pip installed"; PIP_OPTION=no; fi
             ./configure --prefix="$INSTALL_DIRECTORY" --enable-unicode=ucs4  --with-ensurepip=${PIP_OPTION} || printf "Failed to configure python or install pip, check the logs"

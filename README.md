@@ -12,7 +12,25 @@ If you wish to change the installation directory you can modify the variable `IN
 
 #### SHARCNET
 Note that when installing on a compute canada cluster or SHARCNET cluster such as graham/cedar/orca you need do the installation in two steps.
-You can only download the files when running on the head node. However the installation process can be ~ 5 - 10 minutes and the actual installation part of the script **should not be** run on the head node. First you need to run the script on the head node until the downloads are finished, then exit the script with Ctrl+D. Next you should execute the script in an interactive session, or as a job with sbatch.
+You can only download the files when running on the head node. However the installation process can be ~ 1-2 hours and the actual installation part of the script **should not be** run on the head node. First you need to run the script on the head node until the downloads are finished, if the script does not automatically exit then you will need to exit the script with Ctrl+C. Next you should execute the script in an interactive session, or submit a job to the queue with sbatch/qsub.
+Use the following command to request an interactive session on graham or cedar
+```
+salloc --time 2:0:0 --ntasks=8
+```
+you may need to add the `--account` parameter with the relevant user specification
+```
+salloc --time 2:0:0 --ntasks=8 --account=def-user
+```
+If you are on orca ssh into one of the dev nodes before executing the full installation
+```
+ssh orc-dev1
+```
+
+
+* nlogn
+* graham
+* cedar
+* orca
 
 Aliasing or modifying the PATH
 ------------------------------
