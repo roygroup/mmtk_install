@@ -410,6 +410,9 @@ done
 printf "Finished downloading all required packages\n"
 
 
+# see the following stackoverflow post for the choice of -j9
+# https://stackoverflow.com/questions/17743547/how-to-speed-up-compilation-time-in-linux/17749621#17749621
+
 
 # the specific installation options
 function install_function() {
@@ -418,8 +421,8 @@ function install_function() {
             # only try to install pip if we have openssl
             if $INSTALL_PIP_FLAG; then echo "Pip will be installed"; PIP_OPTION=yes; else echo "No pip installed"; PIP_OPTION=no; fi
             ./configure --prefix="$INSTALL_DIRECTORY" --enable-unicode=ucs4  --with-ensurepip=${PIP_OPTION} || printf "Failed to configure python or install pip, check the logs"
-            make || printf "Failed to make python, check the logs"
-            make install || printf "Failed to install python, check the logs"
+            make -j9 || printf "Failed to make python, check the logs"
+            make -j9 install || printf "Failed to install python, check the logs"
             ;;
 
         1) # cython
@@ -427,18 +430,18 @@ function install_function() {
             ;;
         2) # zlib
             ./configure --prefix="$INSTALL_DIRECTORY" || printf "Failed to configure zlib, check the logs"
-            make || printf "Failed to make zlib, check the logs"
-            make check install || printf "Failed to install zlib, check the logs"
+            make -j9 || printf "Failed to make zlib, check the logs"
+            make -j9 check install || printf "Failed to install zlib, check the logs"
             ;;
         3) # HDF5
             ./configure --with-zlib="$INSTALL_DIRECTORY" --prefix="$INSTALL_DIRECTORY" || printf "Failed to configure HDF5, check the logs"
-            make || printf "Failed to make HDF5, check the logs"
-            make check install || printf "Failed to install HDF5, check the logs"
+            make -j9 || printf "Failed to make HDF5, check the logs"
+            make -j9 check install || printf "Failed to install HDF5, check the logs"
             ;;
         4) # netCDF
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
                 ./configure --prefix="$INSTALL_DIRECTORY" || printf "Failed to configure netCDF, check the logs"
-            make check install || printf "Failed to install netCDF, check the logs"
+            make -j9 check install || printf "Failed to install netCDF, check the logs"
             ;;
         5) # Numpy
             "$INSTALL_DIRECTORY"/bin/python setup.py install || printf "Failed to install Numpy, check the logs"
@@ -449,7 +452,7 @@ function install_function() {
             ;;
         7) # FFTW
             ./configure --prefix="$INSTALL_DIRECTORY" --enable-shared  || printf "Failed to configure FFTW, check the logs"
-            make check install || printf "Failed to install FFTW, check the logs"
+            make -j9 check install || printf "Failed to install FFTW, check the logs"
             ;;
         8) # MMTK
             "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_action.pyx
@@ -462,8 +465,8 @@ function install_function() {
             export LD_LIBRARY_PATH="$INSTALL_DIRECTORY"/lib:"${LD_LIBRARY_PATH}"
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
                 ./configure  --disable-fortran-type-check --prefix="$INSTALL_DIRECTORY"  || printf "Failed to configure fortran binaries for netCDF, check the logs"
-            make check  || printf "Failed to make fortran binaries for netCDF, check the logs"
-            make install  || printf "Failed to install fortran binaries for netCDF, check the logs"
+            make -j9 check  || printf "Failed to make fortran binaries for netCDF, check the logs"
+            make -j9 install  || printf "Failed to install fortran binaries for netCDF, check the logs"
             ;;
         *)
             printf "Install loop did something weird, why is the counter ${1} greater than 9?\n"
