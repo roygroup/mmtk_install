@@ -10,6 +10,9 @@ To install
 By default mmtk and its related dependencies will be installed to the local directory `$HOME/.mmtk`.
 If you wish to change the installation directory you can modify the variable `INSTALL_DIRECTORY` on line 10 of the `mmtk_install.sh` script.
 
+#### SHARCNET
+Note that when installing on a compute canada cluster or SHARCNET cluster such as graham/cedar/orca you need do the installation in two steps.
+You can only download the files when running on the head node. However the installation process can be ~ 5 - 10 minutes and the actual installation part of the script **should not be** run on the head node. First you need to run the script on the head node until the downloads are finished, then exit the script with Ctrl+D. Next you should execute the script in an interactive session, or as a job with sbatch.
 
 Aliasing or modifying the PATH
 ------------------------------
@@ -20,15 +23,15 @@ Some examples are provided below
 
 * **macOS + bash**
 ```
-cat 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.bash_profile
+echo 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.bash_profile
 ```
 * **linux + bash**
 ```
-cat 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.bashrc
+echo 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.bashrc
 ```
 * **zsh**
 ```
-cat 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.zshrc
+echo 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.zshrc
 ```
 
 Obviously if you change the `INSTALL_DIRECTORY` you will need to change the aliases.

@@ -118,14 +118,36 @@ arraylength=${#hyperlinks[@]} # the number of packages to download
 cluster_hostnames=(
                     "orc-login" # orca
                     "gra-login"
-                    "cedar"
+                    'cedar[0-9]'
                    )
+
+
+# check if you are running on computecanada or sharcnet cluster
+# if so we need to print out a message to the user
+hostname=$(hostname)
+
+for str in ${cluster_hostnames[@]}; do
+    if [[ ${hostname} =~ ${str} ]]; then
+        echo "It appears that you are running the install script on a login node of a SHARCNET or compute canada cluster.
+        Please note that to install on these clusters is a two step process.
+        First you need to run the script on the head node until the downloads are finished, then exit the script with Ctrl+D.
+        Next you should execute the script in an interactive session, or as a job with sbatch.
+        Do you understand?"
+        select yn in "Yes" "No"; do
+            case $yn in
+                Yes ) break;;
+                No ) echo "Please contact someone in the group"; exit 0;;
+            esac
+        done
+    fi
+done
+
 
 
 #lang specific details
 export LANG=C
 export LC_ALL=C
-set -e
+set -e  # immediately stop the script if a simple command fails
 
 # the directories we will be installing to
 DOWNLOAD_DIRECTORY="$INSTALL_DIRECTORY"/src
@@ -338,9 +360,6 @@ else
 fi
 
 
-# check if you are running on computecanada or sharcnet cluster
-# if so we need to print out a message to the user and maybe automate some of the work for them
-# - TODO -
 
 # create the directories that we will be working in
 mkdir -p ${INSTALL_DIRECTORY}
@@ -398,53 +417,53 @@ function install_function() {
         0) # python
             # only try to install pip if we have openssl
             if $INSTALL_PIP_FLAG; then echo "Pip will be installed"; PIP_OPTION=yes; else echo "No pip installed"; PIP_OPTION=no; fi
-            ./configure --prefix="$INSTALL_DIRECTORY" --enable-unicode=ucs4  --with-ensurepip=${PIP_OPTION}
-            make
-            make install
+            ./configure --prefix="$INSTALL_DIRECTORY" --enable-unicode=ucs4  --with-ensurepip=${PIP_OPTION} || printf "Failed to configure python or install pip, check the logs"
+            make || printf "Failed to make python, check the logs"
+            make install || printf "Failed to install python, check the logs"
             ;;
 
         1) # cython
             "$INSTALL_DIRECTORY"/bin/python setup.py install
             ;;
         2) # zlib
-            ./configure --prefix="$INSTALL_DIRECTORY"
-            make
-            make check install
+            ./configure --prefix="$INSTALL_DIRECTORY" || printf "Failed to configure zlib, check the logs"
+            make || printf "Failed to make zlib, check the logs"
+            make check install || printf "Failed to install zlib, check the logs"
             ;;
         3) # HDF5
-            ./configure --with-zlib="$INSTALL_DIRECTORY" --prefix="$INSTALL_DIRECTORY"
-            make
-            make check install
+            ./configure --with-zlib="$INSTALL_DIRECTORY" --prefix="$INSTALL_DIRECTORY" || printf "Failed to configure HDF5, check the logs"
+            make || printf "Failed to make HDF5, check the logs"
+            make check install || printf "Failed to install HDF5, check the logs"
             ;;
         4) # netCDF
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
-                ./configure --prefix="$INSTALL_DIRECTORY"
-            make check install
+                ./configure --prefix="$INSTALL_DIRECTORY" || printf "Failed to configure netCDF, check the logs"
+            make check install || printf "Failed to install netCDF, check the logs"
             ;;
         5) # Numpy
-            "$INSTALL_DIRECTORY"/bin/python setup.py install
+            "$INSTALL_DIRECTORY"/bin/python setup.py install || printf "Failed to install Numpy, check the logs"
             ;;
         6) # Scipy
             export NETCDF_PREFIX="$INSTALL_DIRECTORY"
-            "$INSTALL_DIRECTORY"/bin/python setup.py install
+            "$INSTALL_DIRECTORY"/bin/python setup.py install || printf "Failed to install Scipy, check the logs"
             ;;
         7) # FFTW
-            ./configure --prefix="$INSTALL_DIRECTORY" --enable-shared
-            make check install
+            ./configure --prefix="$INSTALL_DIRECTORY" --enable-shared  || printf "Failed to configure FFTW, check the logs"
+            make check install || printf "Failed to install FFTW, check the logs"
             ;;
         8) # MMTK
             "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_action.pyx
             "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_generator.pyx
             export MMTK_USE_CYTHON=1
-            "$INSTALL_DIRECTORY"/bin/python setup.py build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib
-            "$INSTALL_DIRECTORY"/bin/python setup.py install
+            "$INSTALL_DIRECTORY"/bin/python setup.py build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib || printf "Failed to build_ext MMTK, check the logs"
+            "$INSTALL_DIRECTORY"/bin/python setup.py install || printf "Failed to install MMTK, check the logs"
             ;;
         9)  #this is only if you need fortran binaries for netCDF
             export LD_LIBRARY_PATH="$INSTALL_DIRECTORY"/lib:"${LD_LIBRARY_PATH}"
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
-                ./configure  --disable-fortran-type-check --prefix="$INSTALL_DIRECTORY"
-            make check
-            make install
+                ./configure  --disable-fortran-type-check --prefix="$INSTALL_DIRECTORY"  || printf "Failed to configure fortran binaries for netCDF, check the logs"
+            make check  || printf "Failed to make fortran binaries for netCDF, check the logs"
+            make install  || printf "Failed to install fortran binaries for netCDF, check the logs"
             ;;
         *)
             printf "Install loop did something weird, why is the counter ${1} greater than 9?\n"
