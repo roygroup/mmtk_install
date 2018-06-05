@@ -440,6 +440,8 @@ function exit_on_error() {
 # see the following post for why the dap-remote-tests are disabled
 # https://www.unidata.ucar.edu/support/help/MailArchives/netcdf/msg13343.html
 
+# actually maybe we want to disable the DAP completely
+
 # the specific installation options
 function install_function() {
     case "$1" in
@@ -471,7 +473,7 @@ function install_function() {
             ;;
         4) # netCDF - (no -j9 for FFTW since '[Makefile:683: install-recursive] Error 1' happens frequently)
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
-                ./configure --prefix="$INSTALL_DIRECTORY" --disable-dap-remote-tests   \
+                ./configure --prefix="$INSTALL_DIRECTORY" --disable-dap   \
                 || exit_on_error "Failed to configure netCDF, check the logs"
             make clean  # if we are re-runing the script we should start fresh
             make check install || exit_on_error "Possibly failed to install netCDF, check the logs - might have actually succeeded"
