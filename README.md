@@ -87,7 +87,7 @@ What the script does
     * **8** - MMTK
     * **9** - fortran binaries for netCDF
 
-    You can rerun the script where you left off by providing a NUMBER argument (shown above) to the script like so: `./mmtk_install.sh 2`, where 0 starts the installation from scratch. The script will continue with the installation ASSUMING that every package before this point SUCCESSFULLY installed, **there is no error checking!**
+    You can rerun the script where you left off by providing a NUMBER argument (shown above) to the script like so: `./mmtk_install.sh 2`, where 0 starts the installation from scratch. The script will continue with the installation ASSUMING that every package before this point SUCCESSFULLY installed, **there is no error checking!**. For example: if FFTW fails to install then you can run `./mmtk_install.sh 7` which will retry the installation of FFTW, and then MMTK, **under the assumption that Python, Cython, zlib, HDF%, netCDF, NumPy, and SciPy all installed correctly**.
 
 5. Finally the last package 9 (fortran_netCDF) is not necessary to run MMTK. Therefore the default setting is to not install it. It is necessary if you want to write fortran code that can read and write \*.nc files. To install the fortran binaries for netCDF change the variable `NETCDF_FORTRAN` on line 37 to true. If you need the fortran binaries for netCDF you *might* need to add the following line to your `.bash_profile` or `.bashrc`
 ```

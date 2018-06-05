@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Molecular Modeling Tool Kit installer
-# version 0.4.0
+# version 0.5.0
 
 
 # # # # # # # USER FAQ # # # # # # #
@@ -81,7 +81,9 @@ NETCDF_FORTRAN=false
 # make: *** [Python/mactoolboxglue.o] Error 1
 # ----------------
 #
-#
+# adding the -j option seems to sometimes cause race issues and throw the following issues
+# [Makefile:652: recipe for target 'check-recursive' failed]
+# rerunning the script seems to always resolve this issue
 #
 # #
 
@@ -126,7 +128,7 @@ cluster_hostnames=(
 # if so we need to print out a message to the user
 hostname=$(hostname)
 
-# set flag to true if on 
+# set flag to true if on
 DOWNLOAD_ONLY=false
 
 for str in ${cluster_hostnames[@]}; do
@@ -166,6 +168,9 @@ LOG_FILE="$SCRIPT_DIR"/logfile      # for now the current directory
 
 # make sure the log file actually exists, and then redirect all stdout and stderr to the log file
 touch "$LOG_FILE"
+# see this post for explanation on how exec is working
+# https://unix.stackexchange.com/questions/80988/how-to-stop-redirection-in-bash?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+exec 3>&1 4>&2
 exec > >(tee "$LOG_FILE") 2>&1
 
 # error codes
@@ -420,10 +425,20 @@ if [[ $DOWNLOAD_ONLY = true ]]; then
     exit
 fi
 
+# for readability
+function exit_on_error() {
+    echo "$1" >&3;
+    exit 0;
+}
+
 
 # see the following stackoverflow post for the choice of -j9
 # https://stackoverflow.com/questions/17743547/how-to-speed-up-compilation-time-in-linux/17749621#17749621
+# also note the following possible issues from
+# https://www.cmcrossroads.com/article/pitfalls-and-benefits-gnu-make-parallelization
 
+# see the following post for why the dap-remote-tests are disabled
+# https://www.unidata.ucar.edu/support/help/MailArchives/netcdf/msg13343.html
 
 # the specific installation options
 function install_function() {
@@ -431,53 +446,63 @@ function install_function() {
         0) # python -- should consider adding the --enable-optimizations command to speed up python?
             # only try to install pip if we have openssl
             if $INSTALL_PIP_FLAG; then echo "Pip will be installed"; PIP_OPTION=yes; else echo "No pip installed"; PIP_OPTION=no; fi
-            ./configure --prefix="$INSTALL_DIRECTORY" --enable-unicode=ucs4  --with-ensurepip=${PIP_OPTION} || printf "Failed to configure python or install pip, check the logs"
-            make -j9 || printf "Failed to make python, check the logs"
-            make -j9 install || printf "Failed to install python, check the logs"
+            ./configure --prefix="$INSTALL_DIRECTORY" --enable-unicode=ucs4  --with-ensurepip=${PIP_OPTION} \
+                || exit_on_error "Failed to configure python or install pip, check the logs"
+            make clean  # if we are re-runing the script we should start fresh
+            make -j9 || exit_on_error "Failed to make python, check the logs"
+            make -j9 install || exit_on_error "Failed to install python, check the logs"
             ;;
 
         1) # cython
             "$INSTALL_DIRECTORY"/bin/python setup.py install
             ;;
         2) # zlib
-            ./configure --prefix="$INSTALL_DIRECTORY" || printf "Failed to configure zlib, check the logs"
-            make -j9 || printf "Failed to make zlib, check the logs"
-            make -j9 check install || printf "Failed to install zlib, check the logs"
+            ./configure --prefix="$INSTALL_DIRECTORY" || exit_on_error "Failed to configure zlib, check the logs"
+            make clean  # if we are re-runing the script we should start fresh
+            make -j9 || exit_on_error "Failed to make zlib, check the logs"
+            make -j9 check install || exit_on_error "Failed to install zlib, check the logs"
             ;;
         3) # HDF5
-            ./configure --with-zlib="$INSTALL_DIRECTORY" --prefix="$INSTALL_DIRECTORY" || printf "Failed to configure HDF5, check the logs"
-            make -j9 || printf "Failed to make HDF5, check the logs"
-            make -j9 check install || printf "Failed to install HDF5, check the logs"
+            ./configure --with-zlib="$INSTALL_DIRECTORY" --prefix="$INSTALL_DIRECTORY" \
+                || exit_on_error "Failed to configure HDF5, check the logs"
+            make clean  # if we are re-runing the script we should start fresh
+            make -j9 || exit_on_error "Failed to make HDF5, check the logs"
+            make -j9 check install || exit_on_error "Failed to install HDF5, check the logs"
             ;;
-        4) # netCDF
+        4) # netCDF - (no -j9 for FFTW since '[Makefile:683: install-recursive] Error 1' happens frequently)
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
-                ./configure --prefix="$INSTALL_DIRECTORY" || printf "Failed to configure netCDF, check the logs"
-            make -j9 check install || printf "Failed to install netCDF, check the logs"
+                ./configure --prefix="$INSTALL_DIRECTORY" --disable-dap-remote-tests   \
+                || exit_on_error "Failed to configure netCDF, check the logs"
+            make clean  # if we are re-runing the script we should start fresh
+            make check install || exit_on_error "Possibly failed to install netCDF, check the logs - might have actually succeeded"
             ;;
         5) # Numpy
-            "$INSTALL_DIRECTORY"/bin/python setup.py install || printf "Failed to install Numpy, check the logs"
+            "$INSTALL_DIRECTORY"/bin/python setup.py install || exit_on_error "Failed to install Numpy, check the logs"
             ;;
         6) # Scipy
             export NETCDF_PREFIX="$INSTALL_DIRECTORY"
-            "$INSTALL_DIRECTORY"/bin/python setup.py install || printf "Failed to install Scipy, check the logs"
+            "$INSTALL_DIRECTORY"/bin/python setup.py install || exit_on_error "Failed to install Scipy, check the logs"
             ;;
-        7) # FFTW
-            ./configure --prefix="$INSTALL_DIRECTORY" --enable-shared  || printf "Failed to configure FFTW, check the logs"
-            make -j9 check install || printf "Failed to install FFTW, check the logs"
+        7) # FFTW - (no -j9 for FFTW since '[Makefile:683: install-recursive] Error 1' happens frequently)
+            ./configure --prefix="$INSTALL_DIRECTORY" --enable-shared  || exit_on_error "Failed to configure FFTW, check the logs"
+            make clean  # if we are re-runing the script we should start fresh
+            make check install || exit_on_error "Failed to install FFTW, check the logs"
             ;;
         8) # MMTK
             "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_action.pyx
             "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_generator.pyx
             export MMTK_USE_CYTHON=1
-            "$INSTALL_DIRECTORY"/bin/python setup.py build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib || printf "Failed to build_ext MMTK, check the logs"
-            "$INSTALL_DIRECTORY"/bin/python setup.py install || printf "Failed to install MMTK, check the logs"
+            "$INSTALL_DIRECTORY"/bin/python setup.py build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib \
+                || exit_on_error "Failed to build_ext MMTK, check the logs"
+            "$INSTALL_DIRECTORY"/bin/python setup.py install || exit_on_error "Failed to install MMTK, check the logs"
             ;;
-        9)  #this is only if you need fortran binaries for netCDF
+        9) # this is only if you need fortran binaries for netCDF
             export LD_LIBRARY_PATH="$INSTALL_DIRECTORY"/lib:"${LD_LIBRARY_PATH}"
-            CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
-                ./configure  --disable-fortran-type-check --prefix="$INSTALL_DIRECTORY"  || printf "Failed to configure fortran binaries for netCDF, check the logs"
-            make -j9 check  || printf "Failed to make fortran binaries for netCDF, check the logs"
-            make -j9 install  || printf "Failed to install fortran binaries for netCDF, check the logs"
+            CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib                             \
+                ./configure --prefix="$INSTALL_DIRECTORY" --disable-fortran-type-check  --disable-dap-remote-tests \
+                || exit_on_error "Failed to configure fortran binaries for netCDF, check the logs"
+            make clean  # if we are re-runing the script we should start fresh
+            make check install  || exit_on_error "Failed to install fortran binaries for netCDF, check the logs"
             ;;
         *)
             printf "Install loop did something weird, why is the counter ${1} greater than 9?\n"
