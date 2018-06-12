@@ -115,6 +115,11 @@ hyperlinks=(
 
 arraylength=${#hyperlinks[@]} # the number of packages to download
 
+# if we don't need to install fortran for netCDF then change arraylength
+if [[ $NETCDF_FORTRAN = false ]]; then
+    let "arraylength -= 1"
+fi
+
 
 # list of sharcnet / computecanada clusters
 cluster_hostnames=(
@@ -123,55 +128,14 @@ cluster_hostnames=(
                     'cedar[0-9]'
                    )
 
-
-# check if you are running on computecanada or sharcnet cluster
-# if so we need to print out a message to the user
-hostname=$(hostname)
-
-# set flag to true if on
-DOWNLOAD_ONLY=false
-
-for str in ${cluster_hostnames[@]}; do
-    if [[ ${hostname} =~ ${str} ]]; then
-        echo "It appears that you are running the install script on a login node of a SHARCNET or compute canada cluster.
-Please note that to install on these clusters is a two step process.
-First you need to run the script on the head node until the downloads are finished, then exit the script with Ctrl+D.
-Next you should execute the script in an interactive session, or as a job with sbatch.
-Do you understand?"
-        DOWNLOAD_ONLY=true
-        select yn in "Yes" "No"; do
-            case $yn in
-                Yes ) break;;
-                No ) echo "Please contact someone in the group"; exit 0;;
-            esac
-        done
-    fi
-done
-
-
+#---------------------------------------------------------------------------------------------------------
+#------------------------------------------- PREAMBLE ABOVE  ---------------------------------------------
+#---------------------------------------------------------------------------------------------------------
 
 #lang specific details
 export LANG=C
 export LC_ALL=C
 set -e  # immediately stop the script if a simple command fails
-
-# the directories we will be installing to
-DOWNLOAD_DIRECTORY="$INSTALL_DIRECTORY"/src
-LOG_DIRECTORY="$INSTALL_DIRECTORY"/logs
-
-# where the script is located
-SCRIPT_FILE="${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]}"
-SCRIPT_DIR="$(dirname "${SCRIPT_FILE}")"
-
-# the name of the log file
-LOG_FILE="$SCRIPT_DIR"/logfile      # for now the current directory
-
-# make sure the log file actually exists, and then redirect all stdout and stderr to the log file
-touch "$LOG_FILE"
-# see this post for explanation on how exec is working
-# https://unix.stackexchange.com/questions/80988/how-to-stop-redirection-in-bash?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
-exec 3>&1 4>&2
-exec > >(tee "$LOG_FILE") 2>&1
 
 # error codes
 E_WRONGKERNEL=83    # wrong kernel
@@ -181,7 +145,6 @@ E_XCD=86            # Can't change directory?
 E_NOTROOT=87        # Non-root exit error
 E_DOWNLOAD=88       # Failed to download necessary files
 tar_error_string="Failed to untar: %s\nIs this hyperlink broken: %s\nIt is required that you can download all packages before the installer can run.\n"
-
 
 #HTTP status codes
 HTTP_NOT_FOUND=404
@@ -217,6 +180,7 @@ function download() {
     fi
 }
 
+
 # let the user know if we failed to get to the correct directory, wrap cd in an "error checking function"
 function change_dir()   {
     cd ${1} || {
@@ -225,205 +189,222 @@ function change_dir()   {
     }
 }
 
-# Flags
-INSTALL_PIP_FLAG=false
 
-# check what OS we are running
-# get the kernel Name
-printf "\n     ===============  machine info  ===============     \n"
-Kernel=$(uname -s)
-case "$Kernel" in
-    Linux)
-        Kernel="linux"
-        INSTALL_PIP_FLAG=true
-        ;;
-    Darwin)
-        MAC_VERSION=$(sw_vers -productVersion)
-        Kernel="OSX $MAC_VERSION"
-        export GCC=/usr/bin/clang
+function check_if_sharcnet_or_compute_canada() {
+    # check if you are running on computecanada or sharcnet cluster
+    # if so we need to print out a message to the user
+    hostname=$(hostname)
+    for str in ${cluster_hostnames[@]}; do
+        if [[ ${hostname} =~ ${str} ]]; then
+            echo "It appears that you are running the install script on a login node of a SHARCNET or compute canada cluster.
+    Please note that to install on these clusters is a two step process.
+    First you need to run the script on the head node until the downloads are finished, then exit the script with Ctrl+D.
+    Next you should execute the script in an interactive session, or as a job with sbatch.
+    Do you understand?"
+            DOWNLOAD_ONLY=true
+            select yn in "Yes" "No"; do
+                case $yn in
+                    Yes ) break;;
+                    No ) echo "Please contact someone in the group"; exit 0;;
+                esac
+            done
+        fi
+    done
+}
 
-        case "$MAC_VERSION" in
-            10.13*)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-6.3-Sierra.dmg           ;;
-            10.12*)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-6.3-Sierra.dmg           ;;
-            10.11*)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-6.1-ElCapitan.dmg        ;;
-            10.10*) # (OS X 10.10)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-5.2-Yosemite.dmg         ;;
-            10.9*)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-4.9.0-Mavericks.dmg      ;;
-            10.8*)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-4.8.2-MountainLion.dmg   ;;
-            10.7*)
-                GFORTAN_LINK=http://coudert.name/software/gfortran-4.8.2-Lion.dmg           ;;
-            *)
-                printf "You need to find a source for gfortran to install on you iMac\n"
-                exit 0
-                ;;
-        esac
 
-        # make sure xcode is installed and up to date
-        echo "Is xcode installed and up to date?"
-        select yn in "Yes" "No"; do
-            case $yn in
-                Yes ) break;;
-                No ) echo "Please install/update xcode before running the script again"; exit 0;;
+function check_architecture()   {
+    Architecture=$(uname -m)
+    case "$Architecture" in
+        x86)
+            Architecture="x86"
+            ;;
+        ia64)
+            Architecture="ia64"
+            ;;
+        i?86)
+            Architecture="x86"
+            ;;
+        amd64)
+            Architecture="amd64"
+            ;;
+        x86_64)
+            Architecture="x86_64"
+            ;;
+        sparc64)
+            Architecture="sparc64"
+            ;;
+        * )
+            printf "Your Architecture %s -> IS NOT SUPPORTED\n" "${Architecture}"
+            exit ${E_WRONGARCH}
+            ;;
+    esac
+    printf "Operating System Architecture: %s\n" "${Architecture}"
+}
+
+
+function check_operating_system()   {
+    printf "\n     ===============  machine info  ===============     \n"
+    Kernel=$(uname -s)
+    case "$Kernel" in
+        Linux)
+            Kernel="linux"
+            INSTALL_PIP_FLAG=true
+            ;;
+        Darwin)
+            MAC_VERSION=$(sw_vers -productVersion)
+            Kernel="OSX $MAC_VERSION"
+            export GCC=/usr/bin/clang
+
+            case "$MAC_VERSION" in
+                10.13*)
+                    GFORTAN_LINK=http://coudert.name/software/gfortran-6.3-Sierra.dmg           ;;
+                10.12*)
+                    GFORTAN_LINK=http://coudert.name/software/gfortran-6.3-Sierra.dmg           ;;
+                10.11*)
+                    GFORTAN_LINK=http://coudert.name/software/gfortran-6.1-ElCapitan.dmg        ;;
+                10.10*) # (OS X 10.10)
+                    GFORTAN_LINK=http://coudert.name/software/gfortran-5.2-Yosemite.dmg         ;;
+                10.9*)
+                    GFORTAN_LINK=http://coudert.name/software/gfortran-4.9.0-Mavericks.dmg      ;;
+                10.8*)
+                    GFORTAN_LINK=http://coudert.name/software/gfortran-4.8.2-MountainLion.dmg   ;;
+                10.7*)
+                    GFORTAN_LINK=http://coudert.name/software/gfortran-4.8.2-Lion.dmg           ;;
+                *)
+                    printf "You need to find a source for gfortran to install on you iMac\n"
+                    exit 0
+                    ;;
             esac
-        done
 
-        # make sure you have openssl installed for pip
-        set +e
-        if [[ $MAC_VERSION == 10.1* ]]; then
-            which -s brew
-            if [[ $? != 0 ]] ; then # then brew doesn't exist
-                # let the user install homebrew
-                echo "You are running OSX and you don't have brew"
-                echo "This means that you will not have pip because openssl is not supported in 10.10+"
-                echo "If you want pip please exit and install brew"
-                echo "Are you sure you wish to proceed?"
-                select yn in "Yes" "No"; do
-                    case $yn in
-                        Yes ) break;;
-                        No ) exit;;
-                    esac
-                done
-            else
-                # brew does exist!
-                brew ls --versions openssl
-                if [[ $? != 0 ]] ; then # but no openssl
-                    echo "Apparently you don't have openssl installed through brew"
-                    echo "Can I install openssl using brew?"
+            # make sure xcode is installed and up to date
+            echo "Is xcode installed and up to date?"
+            select yn in "Yes" "No"; do
+                case $yn in
+                    Yes ) break;;
+                    No ) echo "Please install/update xcode before running the script again"; exit 0;;
+                esac
+            done
+
+            # make sure you have openssl installed for pip
+            set +e
+            if [[ $MAC_VERSION == 1[0-9].1* ]]; then
+                which -s brew
+                if [[ $? != 0 ]] ; then # then brew doesn't exist
+                    # let the user install homebrew
+                    echo "You are running OSX and you don't have brew"
+                    echo "This means that you will not have pip because openssl is not supported in 10.10+"
+                    echo "If you want pip please exit and install brew"
+                    echo "Are you sure you wish to proceed?"
                     select yn in "Yes" "No"; do
                         case $yn in
-                            Yes ) brew install openssl; brew link --force openssl; break;;
+                            Yes ) break;;
                             No ) exit;;
                         esac
                     done
                 else
-                    # openssl installed! joy!
-                    echo "Good you have openssl installed through brew, pip will be installed successfully"
-                    INSTALL_PIP_FLAG=true
+                    # brew does exist!
+                    brew ls --versions openssl
+                    if [[ $? != 0 ]] ; then # but no openssl
+                        echo "Apparently you don't have openssl installed through brew"
+                        echo "Can I install openssl using brew?"
+                        select yn in "Yes" "No"; do
+                            case $yn in
+                                Yes ) brew install openssl; brew link --force openssl; break;;
+                                No ) exit;;
+                            esac
+                        done
+                    else
+                        # openssl installed! joy!
+                        echo "Good you have openssl installed through brew, pip will be installed successfully"
+                        INSTALL_PIP_FLAG=true
+                    fi
                 fi
+            else
+                # if you have an ealier version of OSX (before 10.10) then openssl should be native
+                # and you won't need another version, from brew for example
+                INSTALL_PIP_FLAG=true
             fi
-        else
-            # if you have an ealier version of OSX (before 10.10) then openssl should be native
-            # and you won't need another version, from brew for example
+            set -e
+            # lazy way to force the installer to use clang instead of an independent version of gcc installed in /usr/local/bin
+            export PATH="/usr/bin:$PATH"
+            ;;
+        FreeBSD)
             INSTALL_PIP_FLAG=true
-        fi
-        set -e
-        # lazy way to force the installer to use clang instead of an independent version of gcc installed in /usr/local/bin
-        export PATH="/usr/bin:$PATH"
-        ;;
-    FreeBSD)
-        INSTALL_PIP_FLAG=true
-        Kernel="freebsd"
-        ;;
-    # default case
-    * )
-        printf "Your Operating System %s -> IS NOT SUPPORTED\n" "${Kernel}"
-        exit ${E_WRONGKERNEL}
-        ;;
-esac
-printf "Operating System Kernel: %s\n" "${Kernel}"
-
-# check the architechture
-Architecture=$(uname -m)
-case "$Architecture" in
-    x86)
-        Architecture="x86"
-        ;;
-    ia64)
-        Architecture="ia64"
-        ;;
-    i?86)
-        Architecture="x86"
-        ;;
-    amd64)
-        Architecture="amd64"
-        ;;
-    x86_64)
-        Architecture="x86_64"
-        ;;
-    sparc64)
-        Architecture="sparc64"
-        ;;
-    * )
-        printf "Your Architecture %s -> IS NOT SUPPORTED\n" "${Architecture}"
-        exit ${E_WRONGARCH}
-        ;;
-esac
-printf "Operating System Architecture: %s\n" "${Architecture}"
+            Kernel="freebsd"
+            ;;
+        # default case
+        * )
+            printf "Your Operating System %s -> IS NOT SUPPORTED\n" "${Kernel}"
+            exit ${E_WRONGKERNEL}
+            ;;
+    esac
+    printf "Operating System Kernel: %s\n" "${Kernel}"
+}
 
 
-# check if you have gfortran
-if [[ "$(command -v gfortran)" ]]; then
-    printf "\nIt seems that you have gfortran, however, if the installer fails while trying to install FFTW it is most likely a gfortran issue\n\n"
-    HAS_GFORTRAN=true
-else
-    printf "\nYou do not have gfortran! You will not be able to compile FFTW.\n"
-    printf "Please download and install gfortran from this link:\n%s\nNote that this requires administrative privilages!\n" "$GFORTAN_LINK"
-    printf "If you have already installed an older version of gfortran please remove it with the following command:\n%s\n" \
-    "sudo rm -r /usr/local/gfortran /usr/local/bin/gfortran"
-    HAS_GFORTRAN=false
-fi
+function check_gfortran()   {
+    if [[ "$(command -v gfortran)" ]]; then
+        printf "\nIt seems that you have gfortran, however, if the installer fails while trying to install FFTW it is most likely a gfortran issue\n\n"
+        HAS_GFORTRAN=true
+    else
+        printf "\nYou do not have gfortran! You will not be able to compile FFTW.\n"
+        printf "Please download and install gfortran from this link:\n%s\nNote that this requires administrative privilages!\n" "$GFORTAN_LINK"
+        printf "If you have already installed an older version of gfortran please remove it with the following command:\n%s\n" \
+        "sudo rm -r /usr/local/gfortran /usr/local/bin/gfortran"
+        HAS_GFORTRAN=false
+    fi
+}
 
 
+function make_directories()   {
+    mkdir -p ${INSTALL_DIRECTORY}
+    mkdir -p ${DOWNLOAD_DIRECTORY}
+    mkdir -p ${LOG_DIRECTORY}
+    printf "Succesfully made directories: \n%s\n%s\n%s\n\n" "${INSTALL_DIRECTORY}" "${DOWNLOAD_DIRECTORY}" "${LOG_DIRECTORY}"
+}
 
-# create the directories that we will be working in
-mkdir -p ${INSTALL_DIRECTORY}
-mkdir -p ${DOWNLOAD_DIRECTORY}
-mkdir -p ${LOG_DIRECTORY}
-printf "Succesfully made directories: \n%s\n%s\n%s\n\n" "${INSTALL_DIRECTORY}" "${DOWNLOAD_DIRECTORY}" "${LOG_DIRECTORY}"
 
-# move to the download directory to start downloading
-change_dir "${DOWNLOAD_DIRECTORY}"
+function download_source_files()   {
+    for (( i=0; i<${arraylength}; i++ )); do
 
-# download loop
-for (( i=0; i<${arraylength}; i++ )); do
+        # first store the filename and the foldername (assuming default output from tar)
+        filenames[$i]=$(basename  "${hyperlinks[$i]}")
+        temp="${filenames[$i]}" # couldn't get expression expansion to work without this line
+        foldernames[$i]="${temp%.t*}"
 
-    # first store the filename and the foldername (assuming default output from tar)
-    filenames[$i]=$(basename  "${hyperlinks[$i]}")
-    temp="${filenames[$i]}" # couldn't get expression expansion to work without this line
-    foldernames[$i]="${temp%.t*}"
+        # check to see if the tar has been downloaded and the folder has been created
+        if [ -e "${filenames[$i]}" ] && [ -d  "${foldernames[$i]}" ];
+        then    # file and folder found so we don't need to do anything more (we hope!)
+            printf "It seems that this resource %-8s has already been downloaded and un-tared\n" "(${hyperlink_names[$i]})"
 
-    # check to see if the tar has been downloaded and the folder has been created
-    if [ -e "${filenames[$i]}" ] && [ -d  "${foldernames[$i]}" ];
-    then    # file and folder found so we don't need to do anything more (we hope!)
-        printf "It seems that this resource %-8s has already been downloaded and un-tared\n" "(${hyperlink_names[$i]})"
-
-    elif [ -e "${filenames[$i]}" ] && [ ! -d  "${foldernames[$i]}" ];
-    then    # only the file found so we probably need to un-tar the file, maybe redownload if that doesn't work
-        printf "It seems that this resource %-8s has already been downloaded but not un-tared so we are going to un-tar it\n" "(${hyperlink_names[$i]})"
-        mkdir -p "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}"
-        tar -xzf "${filenames[$i]}" -C "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}" --strip-components=1 || {
-            printf "It seems we failed to un-tar %-35s so we are redownloading it\n" "(${filenames[$i]})"
+        elif [ -e "${filenames[$i]}" ] && [ ! -d  "${foldernames[$i]}" ];
+        then    # only the file found so we probably need to un-tar the file, maybe redownload if that doesn't work
+            printf "It seems that this resource %-8s has already been downloaded but not un-tared so we are going to un-tar it\n" "(${hyperlink_names[$i]})"
+            mkdir -p "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}"
+            tar -xzf "${filenames[$i]}" -C "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}" --strip-components=1 || {
+                printf "It seems we failed to un-tar %-35s so we are redownloading it\n" "(${filenames[$i]})"
+                download "${hyperlinks[$i]}"
+                mkdir -p "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}"
+                tar -xzf "${filenames[$i]}" -C "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}" --strip-components=1 || {
+                    printf "${tar_error_string}" "${filenames[$i]}" "${hyperlinks[$i]}"; exit ${E_DOWNLOAD};
+                }
+            }
+            printf "Un-tared  %-8s\n" "(${filenames[$i]})"
+        else
+                # file not found so proceed to download the file and un-tar it
             download "${hyperlinks[$i]}"
             mkdir -p "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}"
             tar -xzf "${filenames[$i]}" -C "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}" --strip-components=1 || {
                 printf "${tar_error_string}" "${filenames[$i]}" "${hyperlinks[$i]}"; exit ${E_DOWNLOAD};
             }
-        }
-        printf "Un-tared  %-8s\n" "(${filenames[$i]})"
-    else
-            # file not found so proceed to download the file and un-tar it
-        download "${hyperlinks[$i]}"
-        mkdir -p "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}"
-        tar -xzf "${filenames[$i]}" -C "${DOWNLOAD_DIRECTORY}/${foldernames[$i]}" --strip-components=1 || {
-            printf "${tar_error_string}" "${filenames[$i]}" "${hyperlinks[$i]}"; exit ${E_DOWNLOAD};
-        }
-        printf "Successfully downloaded and untared %-8s" "(${hyperlink_names[$i]})"
-        printf "Filename   %s\nFoldername %s\n" "${filenames[$i]}" "${foldernames[$i]}"
-    fi
-done
-printf "Finished downloading all required packages\n"
+            printf "Successfully downloaded and untared %-8s" "(${hyperlink_names[$i]})"
+            printf "Filename   %s\nFoldername %s\n" "${filenames[$i]}" "${foldernames[$i]}"
+        fi
+    done
+    printf "Finished downloading all required packages\n"
+}
 
-
-# if we don't need to install fortran for netCDF then change arraylength
-if [[ $DOWNLOAD_ONLY = true ]]; then
-    printf "It appears we are on a head node, execution will stop here, you must run the script in an interactive session or submit the job to the queue using sbatch/qsub.\n"
-    exit
-fi
 
 # for readability
 function exit_on_error() {
@@ -464,12 +445,12 @@ function install_function() {
             make -j9 || exit_on_error "Failed to make zlib, check the logs"
             make -j9 check install || exit_on_error "Failed to install zlib, check the logs"
             ;;
-        3) # HDF5
+        3) # HDF5 - (no -j9 for FFTW since '[Makefile:683: install-recursive] Error 1' happens frequently enough)
             ./configure --with-zlib="$INSTALL_DIRECTORY" --prefix="$INSTALL_DIRECTORY" \
                 || exit_on_error "Failed to configure HDF5, check the logs"
             make clean  # if we are re-runing the script we should start fresh
-            make -j9 || exit_on_error "Failed to make HDF5, check the logs"
-            make -j9 check install || exit_on_error "Failed to install HDF5, check the logs"
+            make || exit_on_error "Failed to make HDF5, check the logs"
+            make check install || exit_on_error "Failed to install HDF5, check the logs"
             ;;
         4) # netCDF - (no -j9 for FFTW since '[Makefile:683: install-recursive] Error 1' happens frequently)
             CPPFLAGS=-I"$INSTALL_DIRECTORY"/include LDFLAGS=-L"$INSTALL_DIRECTORY"/lib \
@@ -513,26 +494,72 @@ function install_function() {
     esac
 }
 
+
+function install_programs()   {
+    for (( i=0; i<${arraylength}; i++ )); do
+        if [[ "$1" -le "$i" ]]; then
+            change_dir "${foldernames[$i]}"
+            printf "Attempting to build and install %s\n" "${hyperlink_names[$i]}"
+            {
+                install_function "$i"
+            } > "$LOG_DIRECTORY/${hyperlink_names[$i]}log" 2>&1
+            change_dir ..
+            printf "%s successfully installed\n" "${hyperlink_names[$i]}"
+        else
+            printf "Assuming %s is already installed\n" "${hyperlink_names[$i]}"
+        fi
+    done
+}
+
+#---------------------------------------------------------------------------------------------------------
+#--------------------------------------------- INSTALL MMTK  ---------------------------------------------
+#---------------------------------------------------------------------------------------------------------
+
+# Flags
+INSTALL_PIP_FLAG=false # default is false - check_operating_system() will set to true if certain conditions are met
+DOWNLOAD_ONLY=false # used when running on head nodes of computecanada or sharcnet
+
+# the directories we will be installing to
+DOWNLOAD_DIRECTORY="$INSTALL_DIRECTORY"/src
+LOG_DIRECTORY="$INSTALL_DIRECTORY"/logs
+
+# where the script is located
+SCRIPT_FILE="${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]}"
+SCRIPT_DIR="$(dirname "${SCRIPT_FILE}")"
+
+# the name of the log file
+LOG_FILE="$SCRIPT_DIR"/logfile      # for now the current directory
+
+# make sure the log file actually exists, and then redirect all stdout and stderr to the log file
+touch "$LOG_FILE"
+
+# see this post for explanation on how exec is working
+# https://unix.stackexchange.com/questions/80988/how-to-stop-redirection-in-bash?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+exec 3>&1 4>&2
+# redirect all stdout and stderr to the log file
+exec > >(tee "$LOG_FILE") 2>&1
+
+# execute functions
+check_architecture
+check_operating_system
+check_gfortran
+make_directories
+
+# move to the download directory to start downloading
+change_dir "${DOWNLOAD_DIRECTORY}"
+download_source_files
+
 # if we don't need to install fortran for netCDF then change arraylength
-if [[ $NETCDF_FORTRAN = false ]]; then
-    let "arraylength -= 1"
+if [[ $DOWNLOAD_ONLY = true ]]; then
+    printf "It appears we are on a head node, execution will stop here, you must run the script in an interactive session or submit the job to the queue using sbatch/qsub.\n"
+    exit
 fi
 
+# the magic
+#---------------------------------------------------------------------------------------------------------
+install_programs "$1"
+#---------------------------------------------------------------------------------------------------------
 
-# where we install the programs
-for (( i=0; i<${arraylength}; i++ )); do
-    if [[ "$1" -le "$i" ]]; then
-        change_dir "${foldernames[$i]}"
-        printf "Attempting to build and install %s\n" "${hyperlink_names[$i]}"
-        {
-            install_function "$i"
-        } > "$LOG_DIRECTORY/${hyperlink_names[$i]}log" 2>&1
-        change_dir ..
-        printf "%s successfully installed\n" "${hyperlink_names[$i]}"
-    else
-        printf "Assuming %s is already installed\n" "${hyperlink_names[$i]}"
-    fi
-done
 
 printf "Everything is done and MMTK should work now!\n"
 printf "Now Exiting the scipt\n"
