@@ -437,7 +437,7 @@ function install_function() {
             ;;
 
         1) # cython
-            "$INSTALL_DIRECTORY"/bin/python setup.py install
+            ${PYTHON} setup.py clean --all install
             ;;
         2) # zlib
             ./configure --prefix="$INSTALL_DIRECTORY" || exit_on_error "Failed to configure zlib, check the logs"
@@ -460,11 +460,11 @@ function install_function() {
             make check install || exit_on_error "Possibly failed to install netCDF, check the logs - might have actually succeeded"
             ;;
         5) # Numpy
-            "$INSTALL_DIRECTORY"/bin/python setup.py install || exit_on_error "Failed to install Numpy, check the logs"
+            ${PYTHON} setup.py clean --all install || exit_on_error "Failed to install Numpy, check the logs"
             ;;
         6) # Scipy
             export NETCDF_PREFIX="$INSTALL_DIRECTORY"
-            "$INSTALL_DIRECTORY"/bin/python setup.py install || exit_on_error "Failed to install Scipy, check the logs"
+            ${PYTHON} setup.py clean --all install || exit_on_error "Failed to install Scipy, check the logs"
             ;;
         7) # FFTW - (no -j9 for FFTW since '[Makefile:683: install-recursive] Error 1' happens frequently)
             ./configure --prefix="$INSTALL_DIRECTORY" --enable-shared  || exit_on_error "Failed to configure FFTW, check the logs"
@@ -472,12 +472,12 @@ function install_function() {
             make check install || exit_on_error "Failed to install FFTW, check the logs"
             ;;
         8) # MMTK
-            "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_action.pyx
-            "$INSTALL_DIRECTORY"/bin/cython -I Include Src/MMTK_trajectory_generator.pyx
+            ${CYTHON} -I Include Src/MMTK_trajectory_action.pyx
+            ${CYTHON} -I Include Src/MMTK_trajectory_generator.pyx
             export MMTK_USE_CYTHON=1
-            "$INSTALL_DIRECTORY"/bin/python setup.py build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib \
+            ${PYTHON} setup.py clean --all build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib \
                 || exit_on_error "Failed to build_ext MMTK, check the logs"
-            "$INSTALL_DIRECTORY"/bin/python setup.py install || exit_on_error "Failed to install MMTK, check the logs"
+            ${PYTHON} setup.py install || exit_on_error "Failed to install MMTK, check the logs"
             ;;
         9) # this is only if you need fortran binaries for netCDF
             export LD_LIBRARY_PATH="$INSTALL_DIRECTORY"/lib:"${LD_LIBRARY_PATH}"
@@ -527,8 +527,11 @@ LOG_DIRECTORY="$INSTALL_DIRECTORY"/logs
 SCRIPT_FILE="${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]}"
 SCRIPT_DIR="$(dirname "${SCRIPT_FILE}")"
 
+PYTHON="$INSTALL_DIRECTORY"/bin/python  # where python will be located
+CYTHON="$INSTALL_DIRECTORY"/bin/cython  # where cython will be located
+
 # the name of the log file
-LOG_FILE="$SCRIPT_DIR"/logfile      # for now the current directory
+LOG_FILE="$SCRIPT_DIR"/logfile  # for now the current directory
 
 # make sure the log file actually exists, and then redirect all stdout and stderr to the log file
 touch "$LOG_FILE"
@@ -544,14 +547,14 @@ check_architecture
 check_operating_system
 check_gfortran
 make_directories
+check_if_sharcnet_or_compute_canada
 
 # move to the download directory to start downloading
 change_dir "${DOWNLOAD_DIRECTORY}"
 download_source_files
 
-# if we don't need to install fortran for netCDF then change arraylength
 if [[ $DOWNLOAD_ONLY = true ]]; then
-    printf "It appears we are on a head node, execution will stop here, you must run the script in an interactive session or submit the job to the queue using sbatch/qsub.\n"
+    printf "It appears we are on a head node, execution will stop here, you must run the script in an interactive session or submit the job to the queue using sbatch/qsub/srun.\n"
     exit
 fi
 
