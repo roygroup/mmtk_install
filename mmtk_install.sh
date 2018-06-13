@@ -460,7 +460,7 @@ function install_function() {
             make check install || exit_on_error "Possibly failed to install netCDF, check the logs - might have actually succeeded"
             ;;
         5) # Numpy
-            ${PYTHON} setup.py clean --all install || exit_on_error "Failed to install Numpy, check the logs"
+            ${PYTHON} setup.py install || exit_on_error "Failed to install Numpy, check the logs"
             ;;
         6) # Scipy
             export NETCDF_PREFIX="$INSTALL_DIRECTORY"
