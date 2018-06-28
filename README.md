@@ -41,15 +41,15 @@ Some examples are provided below
 
 * **macOS + bash**
 ```
-echo 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.bash_profile
+echo 'alias pydev=$HOME/.mmtk/bin/python' >> $HOME/.bash_profile
 ```
 * **linux + bash**
 ```
-echo 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.bashrc
+echo 'alias pydev=$HOME/.mmtk/bin/python' >> $HOME/.bashrc
 ```
 * **zsh**
 ```
-echo 'alias pydev="$HOME/.mmtk/bin/python' >> $HOME/.zshrc
+echo 'alias pydev=$HOME/.mmtk/bin/python' >> $HOME/.zshrc
 ```
 
 Obviously if you change the `INSTALL_DIRECTORY` you will need to change the aliases.
