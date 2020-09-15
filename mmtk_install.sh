@@ -108,7 +108,7 @@ hyperlinks=(
                 http://sourceforge.net/projects/numpy/files/NumPy/1.8.2/numpy-1.8.2.tar.gz # cannot support higher than 1.8.x
                 https://sourcesup.renater.fr/frs/download.php/file/4570/ScientificPython-2.9.4.tar.gz
                 ftp://ftp.fftw.org/pub/fftw/fftw-3.3.6-pl1.tar.gz
-                https://bitbucket.org/khinsen/mmtk/get/path_integrals.tar.gz
+                https://github.com/khinsen/MMTK/archive/path_integrals.tar.gz
                 ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-fortran-4.4.4.tar.gz
             )
 

@@ -58,7 +58,7 @@ You may also use a different alias then pydev.
 
 Changing the source files (url's)
 --------------------------------------
-On line 100 of `./mmtk_install.sh` there is an array `hyperlinks` of the source url's for each piece of software used in the installation of MMTK. You may modify these links if you wish to use more recent versions of the software, like a newer version of [fftw](http://www.fftw.org/). Unfortunately Python is locked to version 2.7.X and Numpy is locked to version 1.8.x due to dependencies in MMTK. You can [read more about that here](https://bitbucket.org/khinsen/mmtk). The hyperlink_names array just stores strings which are printed to the user in error messages.
+On line 100 of `./mmtk_install.sh` there is an array `hyperlinks` of the source url's for each piece of software used in the installation of MMTK. You may modify these links if you wish to use more recent versions of the software, like a newer version of [fftw](http://www.fftw.org/). Unfortunately Python is locked to version 2.7.X and Numpy is locked to version 1.8.x due to dependencies in MMTK. You can [read more about that here](https://github.com/khinsen/MMTK). The hyperlink_names array just stores strings which are printed to the user in error messages.
 The code assumes that the two arrays are the same length and are in the same order. Do not **remove** any of the url's or names, **only** replace the url's with newer versions if you have confirmed that MMTK will install successfully.
 
 What the script does
