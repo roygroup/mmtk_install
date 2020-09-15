@@ -437,7 +437,7 @@ function install_function() {
             ;;
 
         1) # cython
-            ${PYTHON} setup.py clean --all install
+            ${PYTHON} -s setup.py clean --all install
             ;;
         2) # zlib
             ./configure --prefix="$INSTALL_DIRECTORY" || exit_on_error "Failed to configure zlib, check the logs"
@@ -460,11 +460,11 @@ function install_function() {
             make check install || exit_on_error "Possibly failed to install netCDF, check the logs - might have actually succeeded"
             ;;
         5) # Numpy
-            ${PYTHON} setup.py install || exit_on_error "Failed to install Numpy, check the logs"
+            ${PYTHON} -s setup.py install || exit_on_error "Failed to install Numpy, check the logs"
             ;;
         6) # Scipy
             export NETCDF_PREFIX="$INSTALL_DIRECTORY"
-            ${PYTHON} setup.py clean --all install || exit_on_error "Failed to install Scipy, check the logs"
+            ${PYTHON} -s setup.py clean --all install || exit_on_error "Failed to install Scipy, check the logs"
             ;;
         7) # FFTW - (no -j9 for FFTW since '[Makefile:683: install-recursive] Error 1' happens frequently)
             ./configure --prefix="$INSTALL_DIRECTORY" --enable-shared  || exit_on_error "Failed to configure FFTW, check the logs"
@@ -475,9 +475,9 @@ function install_function() {
             ${CYTHON} -I Include Src/MMTK_trajectory_action.pyx
             ${CYTHON} -I Include Src/MMTK_trajectory_generator.pyx
             export MMTK_USE_CYTHON=1
-            ${PYTHON} setup.py clean --all build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib \
+            ${PYTHON} -s setup.py clean --all build_ext -I"$INSTALL_DIRECTORY"/include -L"$INSTALL_DIRECTORY"/lib \
                 || exit_on_error "Failed to build_ext MMTK, check the logs"
-            ${PYTHON} setup.py install || exit_on_error "Failed to install MMTK, check the logs"
+            ${PYTHON} -s setup.py install || exit_on_error "Failed to install MMTK, check the logs"
             ;;
         9) # this is only if you need fortran binaries for netCDF
             export LD_LIBRARY_PATH="$INSTALL_DIRECTORY"/lib:"${LD_LIBRARY_PATH}"
